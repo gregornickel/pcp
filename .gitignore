@@ -1,0 +1,5 @@
+# hidden directories
+.vscode
+
+# macOS
+.DS_Store
