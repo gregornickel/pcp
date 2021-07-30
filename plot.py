@@ -4,12 +4,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
-from scipy.interpolate import make_interp_spline
 from copy import deepcopy
 
 
 def load_csv(filename):
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         reader = csv.reader(f)
         data_list = list(reader)
 
@@ -51,32 +50,35 @@ def set_y_type(y_type, data, colorbar):
                 y_type[i] = "linear"
     if colorbar: 
         assert y_type[len(y_type) - 1] == "linear", "colorbar axis needs to " \
-            "linear"
+            "be linear"
     return y_type
 
 
-def set_for_str_values(data, y_type, y_labels, y_ticks, y_lim):
-    # Automatically generate y_labels for string values
+# Automatically generate y_labels for string values
+def set_y_labels(y_labels, data, y_type):
     for i in range(len(y_labels)):
-        if y_type[i] == 'categorial':
+        if y_type[i] == "categorial":
             y_label = deepcopy(y_labels[i])
             for j in range(len(data)):
                 if data[j][i] not in y_label:
                     y_label.append(data[j][i])
-
-            # Sort if no labels specified
+            # Only sort if no labels specified
             if not len(y_labels[i]):
                 y_label.sort()
-
             y_labels[i] = y_label
+    return y_labels
+
+
+def set_y_ticks(y_ticks, data, y_type, y_labels):
+    for i in range(len(y_labels)):
+        if y_type[i] == "categorial":
             y_ticks[i] = [len(y_labels[i])]
-            y_lim[i] = [0, len(y_labels[i]) - 1]
-    return y_labels, y_ticks, y_lim 
+    return y_ticks
 
 
 def replace_str_values(data, y_type, y_labels):
     for i in range(len(data[0])):
-        if y_type[i] == 'categorial':
+        if y_type[i] == "categorial":
             for j in range(len(data)):
                 data[j][i] = y_labels[i].index(data[j][i])
     return np.array(data).transpose()
@@ -85,24 +87,24 @@ def replace_str_values(data, y_type, y_labels):
 def set_y_lim(y_lim, data):
     for i in range(len(y_lim)):
         if not y_lim[i]:
-            y_lim[i] = [np.min(data[i, :]) * 0.9, np.max(data[i, :]) * 1.1]
+            y_lim[i] = [np.min(data[i, :]), np.max(data[i, :])]
     return y_lim
 
 
 def get_score(data, y_lim):
-    y_min = y_lim[len(labels) - 1][0]
-    y_max = y_lim[len(labels) - 1][1]
-    score = (np.copy(data[len(labels) - 1, :]) - y_min) / (y_max - y_min)
+    y_min = y_lim[len(y_lim) - 1][0]
+    y_max = y_lim[len(y_lim) - 1][1]
+    score = (np.copy(data[len(y_lim) - 1, :]) - y_min) / (y_max - y_min)
     return score
 
 
+# Rescale data of secondary y-axes to scale of first y-axis
 def rescale_data(data, y_type, y_lim):
-    # Rescale data of secondary y-axes to scale of first y-axis
     scale = np.max(data[0, :])
     for i in range(1, len(y_lim)):
         y_min = y_lim[i][0]
         y_max = y_lim[i][1]
-        if y_type[i] == 'log':
+        if y_type[i] == "log":
             log_min = np.log10(y_min)
             log_max = np.log10(y_max)
             span = log_max - log_min
@@ -121,16 +123,7 @@ def get_path(data, i):
     return path
 
 
-def hide_stuff(ax):
-    # Hide everything not needed (border, background, ...)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.patch.set_alpha(0.0)
-    return ax
-
-
-def plot_pcp(data, 
+def pcp(data, 
              labels, 
              y_type=None, 
              y_labels=None, 
@@ -145,7 +138,7 @@ def plot_pcp(data,
              cmap=plt.get_cmap("inferno")
              ):
     """
-    Parallel coordinates plot 
+    Parallel Coordinates Plot 
 
     Parameters
     ----------
@@ -156,7 +149,7 @@ def plot_pcp(data,
     y_type: list, optional
         Default "None" allows linear axes for numerical values and categorial 
         axes for data of type string. If y_type is passed, logarithmic axes are 
-        also possible, e.g.  ['categorial', 'linear', 'log', ...].
+        also possible, e.g.  ["categorial", "linear", "log", ...].
     y_labels: nested array, optional
         Custom labels for ticks. 
     y_ticks: nested array, optional
@@ -168,8 +161,8 @@ def plot_pcp(data,
     figsize: (float, float), optional
         Width, height in inches.
     rect: array, optional
-        [left, bottom, width, height], defines the position of the figure on the
-        canvas. 
+        [left, bottom, width, height], defines the position of the figure on
+        the canvas. 
     curves: bool, optional
         If True, B-spline curve is drawn.
     alpha: float, optional
@@ -185,9 +178,10 @@ def plot_pcp(data,
     -------
     `~matplotlib.figure.Figure`
     """
+    
+    [left, bottom, width, height] = rect
 
     # Check data
-    [left, bottom, width, height] = rect
     check_data(data, labels)
     y_type = check_formatting(y_type, labels)
     y_labels = check_formatting(y_labels, labels)
@@ -196,8 +190,8 @@ def plot_pcp(data,
 
     # Setup data
     y_type = set_y_type(y_type, data, colorbar) 
-    y_labels, y_ticks, y_lim = set_for_str_values(data, y_type, y_labels, 
-            y_ticks, y_lim)
+    y_labels = set_y_labels(y_labels, data, y_type)
+    y_ticks = set_y_ticks(y_ticks, data, y_type, y_labels)
     data = replace_str_values(data, y_type, y_labels)
     y_lim = set_y_lim(y_lim, data)
     score = get_score(data, y_lim)
@@ -205,7 +199,8 @@ def plot_pcp(data,
 
     # Create figure
     fig = plt.figure(figsize=figsize)
-    ax = fig.add_axes([left, bottom, width, height])
+    ax0 = fig.add_axes([left, bottom, width, height])
+    axes = [ax0] + [ax0.twinx() for i in range(data.shape[0] - 1)]
 
     # Plot curves
     for i in range(data.shape[1]):
@@ -218,74 +213,56 @@ def plot_pcp(data,
             path = get_path(data, i)
             patch = PathPatch(path, facecolor="None", lw=1.5, alpha=alpha, 
                     edgecolor=color, clip_on=False)
-            ax.add_patch(patch)
+            ax0.add_patch(patch)
         else:
             plt.plot(data[:, i], color=color, alpha=alpha, clip_on=False)
 
-    # Format axis
-    ax = hide_stuff(ax)
-    ax.xaxis.tick_top()
-    ax.xaxis.set_ticks_position('none')
-    ax.set_xlim([0, data.shape[0]-1])
-    ax.set_xticks(range(data.shape[0]))
-    ax.set_xticklabels(labels)
+    # Format x-axis
+    ax0.xaxis.tick_top()
+    ax0.xaxis.set_ticks_position("none")
+    ax0.set_xlim([0, data.shape[0] - 1])
+    ax0.set_xticks(range(data.shape[0]))
+    ax0.set_xticklabels(labels)
 
-    # Set limits, ticks and labels for 1st y-axis
-    ax.set_ylim(y_lim[0])
-    if y_ticks[0]:
-        ax.set_yticks(range(y_ticks[0][0]))
-    if y_labels[0]:
-        ax.set_yticklabels(y_labels[0])
-
-    # Add secondary y-axes
-    for i in range(1, len(labels) - 1):
-        yax_gap = width/(len(labels) - 1)
-        ax2 = fig.add_axes([left + yax_gap * i, bottom, yax_gap, height])
-        ax2 = hide_stuff(ax2)
-        plt.xticks([], [])
-
-        # Set limits, ticks and labels for secondary y-axes
-        ax2.set_ylim(y_lim[i])
-        if y_ticks[i]:
-            if y_type[i] == 'categorial':
-                ax2.set_yticks(range(y_ticks[i][0]))
-            else:
-                # When a manual number of ticks has been specified
-                start = y_lim[i][0]
-                stop = y_lim[i][1] + 1
-                step = (stop - start) / y_ticks[i][0]
-                ax2.set_yticks(np.arange(start, stop, step))
-                ax2.set_yticklabels(np.round(np.arange(start, stop, step), 2))
+    # Format y-axis
+    for i, ax in enumerate(axes):
+        ax.spines["left"].set_position(("axes", 1 / (len(labels) - 1) * i))
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        
+        ax.yaxis.set_ticks_position("left")
+        ax.set_ylim(y_lim[i])
+        if y_type[i] == "log":
+            ax.set_yscale("log")
+        if y_type[i] == "categorial":
+            ax.set_yticks(range(y_ticks[i][0]))
+        if y_type[i] == "linear" and y_ticks[i]:
+            start = y_lim[i][0]
+            stop = y_lim[i][1] + 1
+            step = (stop - start) / y_ticks[i][0]
+            ax.set_yticks(np.arange(start, stop, step))
         if y_labels[i]:
-            ax2.set_yticklabels(y_labels[i])
-        if y_type[i] == 'log':
-            ax2.set_yscale('log')
-
-    # Create last y-axis separate, to create only one colorbar
-    ax3 = fig.add_axes([left + yax_gap * (i + 1), bottom, colorbar_width, height])
-    ax3 = hide_stuff(ax3)
-    plt.xticks([], [])
-
+            ax.set_yticklabels(y_labels[i])
+        
     if colorbar:
-        norm = mpl.colors.Normalize(vmin = y_lim[i + 1][0], vmax=y_lim[i + 1][1])
-        mpl.colorbar.ColorbarBase(ax3, cmap=cmap, norm=norm, orientation='vertical')
-
-        # Very inelegant shift of the last xticklabel
-        labels[-1] = '       ' + labels[-1]
-        ax.set_xticklabels(labels)
-    else:
-        ax3.set_ylim([y_lim[i + 1][0], y_lim[i + 1][1]])
+        bar = fig.add_axes([left + width, bottom, colorbar_width, height])
+        norm = mpl.colors.Normalize(vmin=y_lim[i][0], vmax=y_lim[i][1])
+        mpl.colorbar.ColorbarBase(bar, cmap=cmap, norm=norm, 
+            orientation="vertical")
+        bar.tick_params(size=0)
+        bar.set_yticklabels([])
 
     return fig
 
 
 if __name__ == "__main__":
-    results = [['ResNet', 0.8, 0.8, 0.3],
-               ['DenseNet', 0.5, 0.7, 0.9]]
-    labels = ['Network', 'Learning rate', 'Batchsize', 'F-Score']
-    plot_pcp(results, labels)
-    plt.show()
-
-    data, labels = load_csv("data.csv")
-    plot_pcp(data, labels)
+    # Minimal working example
+    results = [["ResNet", 0.0001, 4, 0.2],
+               ["ResNet", 0.0003, 8, 1.0],
+               ["DenseNet", 0.0005, 4, 0.65],
+               ["DenseNet", 0.0007, 8, 0.45],
+               ["DenseNet", 0.001, 2, 0.8]]
+    labels = ["Network", "Learning rate", "Batchsize", "F-Score"]
+    pcp(results, labels)
     plt.show()
