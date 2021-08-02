@@ -41,69 +41,69 @@ def check_formatting(y_attribute, labels):
     return y_attribute
 
 
-def set_y_type(y_type, data, colorbar):
-    for i in range(len(y_type)):
-        if not y_type[i]:
+def set_ytype(ytype, data, colorbar):
+    for i in range(len(ytype)):
+        if not ytype[i]:
             if type(data[0][i]) is str:
-                y_type[i] = "categorial"
+                ytype[i] = "categorial"
             else:
-                y_type[i] = "linear"
+                ytype[i] = "linear"
     if colorbar: 
-        assert y_type[len(y_type) - 1] == "linear", "colorbar axis needs to " \
+        assert ytype[len(ytype) - 1] == "linear", "colorbar axis needs to " \
             "be linear"
-    return y_type
+    return ytype
 
 
-# Automatically generate y_labels for string values
-def set_y_labels(data, y_type):
-    y_labels = [[]] * len(y_type)
-    for i in range(len(y_labels)):
-        if y_type[i] == "categorial":
+# Automatically generate ylabels for string values
+def set_ylabels(data, ytype):
+    ylabels = [[]] * len(ytype)
+    for i in range(len(ylabels)):
+        if ytype[i] == "categorial":
             y_label = []
             for j in range(len(data)):
                 if data[j][i] not in y_label:
                     y_label.append(data[j][i])
             y_label.sort()
-            y_labels[i] = y_label
-    return y_labels
+            ylabels[i] = y_label
+    return ylabels
 
 
-def set_y_ticks(y_ticks, data, y_type, y_labels):
-    for i in range(len(y_labels)):
-        if y_type[i] == "categorial":
-            y_ticks[i] = [len(y_labels[i])]
-    return y_ticks
+def set_yticks(yticks, data, ytype, ylabels):
+    for i in range(len(ylabels)):
+        if ytype[i] == "categorial":
+            yticks[i] = [len(ylabels[i])]
+    return yticks
 
 
-def replace_str_values(data, y_type, y_labels):
+def replace_str_values(data, ytype, ylabels):
     for i in range(len(data[0])):
-        if y_type[i] == "categorial":
+        if ytype[i] == "categorial":
             for j in range(len(data)):
-                data[j][i] = y_labels[i].index(data[j][i])
+                data[j][i] = ylabels[i].index(data[j][i])
     return np.array(data).transpose()
 
 
-def set_y_lim(y_lim, data):
-    for i in range(len(y_lim)):
-        if not y_lim[i]:
-            y_lim[i] = [np.min(data[i, :]), np.max(data[i, :])]
-    return y_lim
+def set_ylim(ylim, data):
+    for i in range(len(ylim)):
+        if not ylim[i]:
+            ylim[i] = [np.min(data[i, :]), np.max(data[i, :])]
+    return ylim
 
 
-def get_score(data, y_lim):
-    y_min = y_lim[len(y_lim) - 1][0]
-    y_max = y_lim[len(y_lim) - 1][1]
-    score = (np.copy(data[len(y_lim) - 1, :]) - y_min) / (y_max - y_min)
+def get_score(data, ylim):
+    y_min = ylim[len(ylim) - 1][0]
+    y_max = ylim[len(ylim) - 1][1]
+    score = (np.copy(data[len(ylim) - 1, :]) - y_min) / (y_max - y_min)
     return score
 
 
 # Rescale data of secondary y-axes to scale of first y-axis
-def rescale_data(data, y_type, y_lim):
+def rescale_data(data, ytype, ylim):
     scale = np.max(data[0, :])
-    for i in range(1, len(y_lim)):
-        y_min = y_lim[i][0]
-        y_max = y_lim[i][1]
-        if y_type[i] == "log":
+    for i in range(1, len(ylim)):
+        y_min = ylim[i][0]
+        y_max = ylim[i][1]
+        if ytype[i] == "log":
             log_min = np.log10(y_min)
             log_max = np.log10(y_max)
             span = log_max - log_min
@@ -113,12 +113,12 @@ def rescale_data(data, y_type, y_lim):
     return data
 
 
-def combine_ylabels(y_labels, custom_ylabels):
+def combine_ylabels(ylabels, custom_ylabels):
     if custom_ylabels:
-        for i in range(len(y_labels)):
+        for i in range(len(ylabels)):
             if custom_ylabels[i]:
-                y_labels[i] = custom_ylabels[i]
-    return y_labels
+                ylabels[i] = custom_ylabels[i]
+    return ylabels
 
 
 def get_path(data, i):
@@ -132,10 +132,10 @@ def get_path(data, i):
 
 def pcp(data, 
         labels, 
-        y_type=None, 
-        y_labels=None, 
-        y_ticks=None, 
-        y_lim=None, 
+        ytype=None, 
+        ylabels=None, 
+        yticks=None, 
+        ylim=None, 
         figsize=(10, 5), 
         rect=[0.125, 0.1, 0.75, 0.8], 
         curves=True,
@@ -153,17 +153,17 @@ def pcp(data,
         Inner arrays containing data for each curve.
     labels: list
         Labels for y-axes.
-    y_type: list, optional
+    ytype: list, optional
         Default "None" allows linear axes for numerical values and categorial 
-        axes for data of type string. If y_type is passed, logarithmic axes are 
+        axes for data of type string. If ytype is passed, logarithmic axes are 
         also possible, e.g.  ["categorial", "linear", "log", [], ...]. Vacant 
         fields must be filled with an empty list []. 
-    y_labels: list, optional
+    ylabels: list, optional
         Custom labels for ticks, e.g. [["Custom label", ...], [], ...]. 
-    y_ticks: list, optiona, e.g. [[5], [], ...].
+    yticks: list, optiona, e.g. [[5], [], ...].
         Custom number of ticks, only for linear axes!
         Number of ticks for categorical axes is automatically set. 
-    y_lim: list, optional
+    ylim: list, optional
         Custom min and max values for y-axes, e.g. [[0, 1], [], ...].
     figsize: (float, float), optional
         Width, height in inches.
@@ -188,24 +188,24 @@ def pcp(data,
     
     [left, bottom, width, height] = rect
     data = deepcopy(data)
-    custom_ylabels = deepcopy(y_labels)
+    custom_ylabels = deepcopy(ylabels)
     
     # Check data
     check_data(data, labels)
-    y_type = check_formatting(y_type, labels)
-    y_labels = check_formatting(y_labels, labels)
-    y_ticks = check_formatting(y_ticks, labels)
-    y_lim = check_formatting(y_lim, labels)
+    ytype = check_formatting(ytype, labels)
+    ylabels = check_formatting(ylabels, labels)
+    yticks = check_formatting(yticks, labels)
+    ylim = check_formatting(ylim, labels)
 
     # Setup data
-    y_type = set_y_type(y_type, data, colorbar) 
-    y_labels = set_y_labels(data, y_type)
-    y_ticks = set_y_ticks(y_ticks, data, y_type, y_labels)
-    data = replace_str_values(data, y_type, y_labels)
-    y_lim = set_y_lim(y_lim, data)
-    score = get_score(data, y_lim)
-    data = rescale_data(data, y_type, y_lim)
-    y_labels = combine_ylabels(y_labels, custom_ylabels) 
+    ytype = set_ytype(ytype, data, colorbar) 
+    ylabels = set_ylabels(data, ytype)
+    yticks = set_yticks(yticks, data, ytype, ylabels)
+    data = replace_str_values(data, ytype, ylabels)
+    ylim = set_ylim(ylim, data)
+    score = get_score(data, ylim)
+    data = rescale_data(data, ytype, ylim)
+    ylabels = combine_ylabels(ylabels, custom_ylabels) 
 
     # Create figure
     fig = plt.figure(figsize=figsize)
@@ -242,24 +242,19 @@ def pcp(data,
         ax.spines["bottom"].set_visible(False)
         
         ax.yaxis.set_ticks_position("left")
-        ax.set_ylim(y_lim[i])
-        if y_type[i] == "log":
+        ax.set_ylim(ylim[i])
+        if ytype[i] == "log":
             ax.set_yscale("log")
-        if y_type[i] == "categorial":
-            ax.set_yticks(range(y_ticks[i][0]))
-        if y_type[i] == "linear" and y_ticks[i]:
-            ax.set_yticks(np.linspace(y_lim[i][0], y_lim[i][1], y_ticks[i][0]))
-            
-            #start = y_lim[i][0]
-            #stop = y_lim[i][1]
-            #step = (stop - start) / (y_ticks[i][0] - 1)
-            #ax.set_yticks(np.arange(start, stop + step, step))
-        if y_labels[i]:
-            ax.set_yticklabels(y_labels[i])
+        if ytype[i] == "categorial":
+            ax.set_yticks(range(yticks[i][0]))
+        if ytype[i] == "linear" and yticks[i]:
+            ax.set_yticks(np.linspace(ylim[i][0], ylim[i][1], yticks[i][0]))
+        if ylabels[i]:
+            ax.set_yticklabels(ylabels[i])
         
     if colorbar:
         bar = fig.add_axes([left + width, bottom, colorbar_width, height])
-        norm = mpl.colors.Normalize(vmin=y_lim[i][0], vmax=y_lim[i][1])
+        norm = mpl.colors.Normalize(vmin=ylim[i][0], vmax=ylim[i][1])
         mpl.colorbar.ColorbarBase(bar, cmap=cmap, norm=norm, 
             orientation="vertical")
         bar.tick_params(size=0)
