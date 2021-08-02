@@ -1,0 +1,8 @@
+name: pcp
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyter=1.0.0
+  - matplotlib=3.3.4
+  - numpy=1.20.3

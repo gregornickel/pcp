@@ -55,16 +55,15 @@ def set_y_type(y_type, data, colorbar):
 
 
 # Automatically generate y_labels for string values
-def set_y_labels(y_labels, data, y_type):
+def set_y_labels(data, y_type):
+    y_labels = [[]] * len(y_type)
     for i in range(len(y_labels)):
         if y_type[i] == "categorial":
-            y_label = deepcopy(y_labels[i])
+            y_label = []
             for j in range(len(data)):
                 if data[j][i] not in y_label:
                     y_label.append(data[j][i])
-            # Only sort if no labels specified
-            if not len(y_labels[i]):
-                y_label.sort()
+            y_label.sort()
             y_labels[i] = y_label
     return y_labels
 
@@ -114,6 +113,14 @@ def rescale_data(data, y_type, y_lim):
     return data
 
 
+def combine_ylabels(y_labels, custom_ylabels):
+    if custom_ylabels:
+        for i in range(len(y_labels)):
+            if custom_ylabels[i]:
+                y_labels[i] = custom_ylabels[i]
+    return y_labels
+
+
 def get_path(data, i):
     n = data.shape[0] # number of y-axes
     verts = list(zip([x for x in np.linspace(0, n - 1, n * 3 - 2)], 
@@ -124,19 +131,19 @@ def get_path(data, i):
 
 
 def pcp(data, 
-             labels, 
-             y_type=None, 
-             y_labels=None, 
-             y_ticks=None, 
-             y_lim=None, 
-             figsize=(10, 5), 
-             rect=[0.125, 0.1, 0.75, 0.8], 
-             curves=True,
-             alpha=1.0,
-             colorbar=True, 
-             colorbar_width=0.03,
-             cmap=plt.get_cmap("inferno")
-             ):
+        labels, 
+        y_type=None, 
+        y_labels=None, 
+        y_ticks=None, 
+        y_lim=None, 
+        figsize=(10, 5), 
+        rect=[0.125, 0.1, 0.75, 0.8], 
+        curves=True,
+        alpha=1.0,
+        colorbar=True, 
+        colorbar_width=0.03,
+        cmap=plt.get_cmap("inferno")
+        ):
     """
     Parallel Coordinates Plot 
 
@@ -149,15 +156,15 @@ def pcp(data,
     y_type: list, optional
         Default "None" allows linear axes for numerical values and categorial 
         axes for data of type string. If y_type is passed, logarithmic axes are 
-        also possible, e.g.  ["categorial", "linear", "log", ...].
-    y_labels: nested array, optional
-        Custom labels for ticks. 
-    y_ticks: nested array, optional
-        Custom number of ticks, should fit with the defined y_lim.
-        Note: A wrong number of ticks for categorical axes is automatically 
-        adjusted.
-    y_lim: nested array, optional
-        Custom min and max values for y-axes.
+        also possible, e.g.  ["categorial", "linear", "log", [], ...]. Vacant 
+        fields must be filled with an empty list []. 
+    y_labels: list, optional
+        Custom labels for ticks, e.g. [["Custom label", ...], [], ...]. 
+    y_ticks: list, optiona, e.g. [[5], [], ...].
+        Custom number of ticks, only for linear axes!
+        Number of ticks for categorical axes is automatically set. 
+    y_lim: list, optional
+        Custom min and max values for y-axes, e.g. [[0, 1], [], ...].
     figsize: (float, float), optional
         Width, height in inches.
     rect: array, optional
@@ -180,7 +187,9 @@ def pcp(data,
     """
     
     [left, bottom, width, height] = rect
-
+    data = deepcopy(data)
+    custom_ylabels = deepcopy(y_labels)
+    
     # Check data
     check_data(data, labels)
     y_type = check_formatting(y_type, labels)
@@ -190,12 +199,13 @@ def pcp(data,
 
     # Setup data
     y_type = set_y_type(y_type, data, colorbar) 
-    y_labels = set_y_labels(y_labels, data, y_type)
+    y_labels = set_y_labels(data, y_type)
     y_ticks = set_y_ticks(y_ticks, data, y_type, y_labels)
     data = replace_str_values(data, y_type, y_labels)
     y_lim = set_y_lim(y_lim, data)
     score = get_score(data, y_lim)
     data = rescale_data(data, y_type, y_lim)
+    y_labels = combine_ylabels(y_labels, custom_ylabels) 
 
     # Create figure
     fig = plt.figure(figsize=figsize)
@@ -238,10 +248,12 @@ def pcp(data,
         if y_type[i] == "categorial":
             ax.set_yticks(range(y_ticks[i][0]))
         if y_type[i] == "linear" and y_ticks[i]:
-            start = y_lim[i][0]
-            stop = y_lim[i][1] + 1
-            step = (stop - start) / y_ticks[i][0]
-            ax.set_yticks(np.arange(start, stop, step))
+            ax.set_yticks(np.linspace(y_lim[i][0], y_lim[i][1], y_ticks[i][0]))
+            
+            #start = y_lim[i][0]
+            #stop = y_lim[i][1]
+            #step = (stop - start) / (y_ticks[i][0] - 1)
+            #ax.set_yticks(np.arange(start, stop + step, step))
         if y_labels[i]:
             ax.set_yticklabels(y_labels[i])
         

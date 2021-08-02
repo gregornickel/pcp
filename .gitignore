@@ -1,5 +1,6 @@
 # hidden directories
-.vscode
+__pycache__
+.*
 
 # macOS
 .DS_Store
