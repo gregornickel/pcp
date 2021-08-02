@@ -1,7 +1,7 @@
 # Parallel Coordinates Plot
 Plot parallel coordinates using only matplotlib. Create multiple y-axes depending on your data, which can be linear, logarithmic or categorial. 
 
-![Parallel Coordinates Plot](test.svg)
+![Parallel Coordinates Plot](pcp_plot.svg)
 
 ## Example
 
