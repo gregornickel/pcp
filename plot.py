@@ -32,13 +32,13 @@ def check_data(data, labels):
             "match with labels (%d)" % (len(data[i]), len(labels))
 
 
-def check_formatting(y_attribute, labels):
-    if y_attribute:
-        assert len(y_attribute) is len(labels), "dimension (%d) does not " \
-            "match with labels (%d)" % (len(y_attribute), len(labels))
+def check_formatting(yattribute, labels):
+    if yattribute:
+        assert len(yattribute) is len(labels), "dimension (%d) does not " \
+            "match with labels (%d)" % (len(yattribute), len(labels))
     else:
-        y_attribute = [[]] * len(labels)
-    return y_attribute
+        yattribute = [[]] * len(labels)
+    return yattribute
 
 
 def set_ytype(ytype, data, colorbar):
@@ -54,21 +54,25 @@ def set_ytype(ytype, data, colorbar):
     return ytype
 
 
-# Automatically generate ylabels for string values
 def set_ylabels(data, ytype):
     ylabels = [[]] * len(ytype)
-    for i in range(len(ylabels)):
+    for i in range(len(ylabels)): # Generate ylabels for string values
         if ytype[i] == "categorial":
-            y_label = []
+            ylabel = []
             for j in range(len(data)):
-                if data[j][i] not in y_label:
-                    y_label.append(data[j][i])
-            y_label.sort()
-            ylabels[i] = y_label
+                if data[j][i] not in ylabel:
+                    # Improve the csv read to get rid of this check
+                    if isinstance(data[j][i], float):
+                        ylabel.append(int(data[j][i]))
+                    else:
+                        ylabel.append(data[j][i])
+            ylabel.sort()
+            ylabels[i] = ylabel
     return ylabels
 
 
-def set_yticks(yticks, data, ytype, ylabels):
+def set_yticks(data, ytype, ylabels):
+    yticks = [[]] * len(ytype)
     for i in range(len(ylabels)):
         if ytype[i] == "categorial":
             yticks[i] = [len(ylabels[i])]
@@ -91,34 +95,28 @@ def set_ylim(ylim, data):
 
 
 def get_score(data, ylim):
-    y_min = ylim[len(ylim) - 1][0]
-    y_max = ylim[len(ylim) - 1][1]
-    score = (np.copy(data[len(ylim) - 1, :]) - y_min) / (y_max - y_min)
+    ymin = ylim[len(ylim) - 1][0]
+    ymax = ylim[len(ylim) - 1][1]
+    score = (np.copy(data[len(ylim) - 1, :]) - ymin) / (ymax - ymin)
     return score
 
 
 # Rescale data of secondary y-axes to scale of first y-axis
 def rescale_data(data, ytype, ylim):
-    scale = np.max(data[0, :])
+    min0 = np.min(data[0, :])
+    max0 = np.max(data[0, :])
+    scale = max0 - min0
     for i in range(1, len(ylim)):
-        y_min = ylim[i][0]
-        y_max = ylim[i][1]
+        mini = ylim[i][0]
+        maxi = ylim[i][1]
         if ytype[i] == "log":
-            log_min = np.log10(y_min)
-            log_max = np.log10(y_max)
-            span = log_max - log_min
-            data[i, :] = ((np.log10(data[i, :]) - log_min) / span) * scale
+            logmin = np.log10(mini)
+            logmax = np.log10(maxi)
+            span = logmax - logmin
+            data[i, :] = ((np.log10(data[i, :]) - logmin) / span) * scale + min0
         else:
-            data[i, :] = ((data[i, :] - y_min) / (y_max - y_min)) * scale
+            data[i, :] = ((data[i, :] - mini) / (maxi - mini)) * scale + min0
     return data
-
-
-def combine_ylabels(ylabels, custom_ylabels):
-    if custom_ylabels:
-        for i in range(len(ylabels)):
-            if custom_ylabels[i]:
-                ylabels[i] = custom_ylabels[i]
-    return ylabels
 
 
 def get_path(data, i):
@@ -133,8 +131,6 @@ def get_path(data, i):
 def pcp(data, 
         labels, 
         ytype=None, 
-        ylabels=None, 
-        yticks=None, 
         ylim=None, 
         figsize=(10, 5), 
         rect=[0.125, 0.1, 0.75, 0.8], 
@@ -158,11 +154,6 @@ def pcp(data,
         axes for data of type string. If ytype is passed, logarithmic axes are 
         also possible, e.g.  ["categorial", "linear", "log", [], ...]. Vacant 
         fields must be filled with an empty list []. 
-    ylabels: list, optional
-        Custom labels for ticks, e.g. [["Custom label", ...], [], ...]. 
-    yticks: list, optiona, e.g. [[5], [], ...].
-        Custom number of ticks, only for linear axes!
-        Number of ticks for categorical axes is automatically set. 
     ylim: list, optional
         Custom min and max values for y-axes, e.g. [[0, 1], [], ...].
     figsize: (float, float), optional
@@ -188,24 +179,20 @@ def pcp(data,
     
     [left, bottom, width, height] = rect
     data = deepcopy(data)
-    custom_ylabels = deepcopy(ylabels)
     
     # Check data
     check_data(data, labels)
     ytype = check_formatting(ytype, labels)
-    ylabels = check_formatting(ylabels, labels)
-    yticks = check_formatting(yticks, labels)
     ylim = check_formatting(ylim, labels)
 
     # Setup data
     ytype = set_ytype(ytype, data, colorbar) 
     ylabels = set_ylabels(data, ytype)
-    yticks = set_yticks(yticks, data, ytype, ylabels)
+    yticks = set_yticks(data, ytype, ylabels)
     data = replace_str_values(data, ytype, ylabels)
     ylim = set_ylim(ylim, data)
     score = get_score(data, ylim)
     data = rescale_data(data, ytype, ylim)
-    ylabels = combine_ylabels(ylabels, custom_ylabels) 
 
     # Create figure
     fig = plt.figure(figsize=figsize)
