@@ -16,10 +16,16 @@ def load_csv(filename):
     for i in range(1, len(data_list)):
         result = []
         for j in data_list[i]:
-            try:
-                result.append(float(j))
-            except ValueError:
-                result.append(j)
+            if "." in j or "e" in j:
+                try:
+                    result.append(float(j))
+                except ValueError:
+                    result.append(j)
+            else:
+                try:
+                    result.append(int(j))
+                except ValueError:
+                    result.append(j)
 
         results.append(result)
 
@@ -54,33 +60,23 @@ def set_ytype(ytype, data, colorbar):
     return ytype
 
 
-def set_ylabels(data, ytype):
-    ylabels = [[]] * len(ytype)
-    for i in range(len(ylabels)): # Generate ylabels for string values
-        if ytype[i] == "categorial":
+def set_ylabels(ylabels, data, ytype):
+    for i in range(len(ylabels)): 
+        # Generate ylabels for string values
+        if not ylabels[i] and ytype[i] == "categorial":
             ylabel = []
             for j in range(len(data)):
                 if data[j][i] not in ylabel:
-                    # Improve the csv read to get rid of this check
-                    if isinstance(data[j][i], float):
-                        ylabel.append(int(data[j][i]))
-                    else:
-                        ylabel.append(data[j][i])
+                    ylabel.append(data[j][i])
             ylabel.sort()
+            if len(ylabel) == 1:
+                ylabel.append("")
             ylabels[i] = ylabel
     return ylabels
 
 
-def set_yticks(data, ytype, ylabels):
-    yticks = [[]] * len(ytype)
-    for i in range(len(ylabels)):
-        if ytype[i] == "categorial":
-            yticks[i] = [len(ylabels[i])]
-    return yticks
-
-
 def replace_str_values(data, ytype, ylabels):
-    for i in range(len(data[0])):
+    for i in range(len(ytype)):
         if ytype[i] == "categorial":
             for j in range(len(data)):
                 data[j][i] = ylabels[i].index(data[j][i])
@@ -91,6 +87,10 @@ def set_ylim(ylim, data):
     for i in range(len(ylim)):
         if not ylim[i]:
             ylim[i] = [np.min(data[i, :]), np.max(data[i, :])]
+            if ylim[i][0] == ylim[i][1]:
+                ylim[i] = [ylim[i][0] * 0.95, ylim[i][1] * 1.05]
+            if ylim[i] == [0.0, 0.0]:
+                ylim[i] = [0.0, 1.0]
     return ylim
 
 
@@ -103,8 +103,8 @@ def get_score(data, ylim):
 
 # Rescale data of secondary y-axes to scale of first y-axis
 def rescale_data(data, ytype, ylim):
-    min0 = np.min(data[0, :])
-    max0 = np.max(data[0, :])
+    min0 = ylim[0][0]
+    max0 = ylim[0][1]
     scale = max0 - min0
     for i in range(1, len(ylim)):
         mini = ylim[i][0]
@@ -132,12 +132,13 @@ def pcp(data,
         labels, 
         ytype=None, 
         ylim=None, 
+        ylabels=None, 
         figsize=(10, 5), 
         rect=[0.125, 0.1, 0.75, 0.8], 
         curves=True,
         alpha=1.0,
         colorbar=True, 
-        colorbar_width=0.03,
+        colorbar_width=0.02,
         cmap=plt.get_cmap("inferno")
         ):
     """
@@ -156,6 +157,10 @@ def pcp(data,
         fields must be filled with an empty list []. 
     ylim: list, optional
         Custom min and max values for y-axes, e.g. [[0, 1], [], ...].
+    ylabels: list, optional (not recommended)
+        Only use this option if you want to print more categories than you have
+        in your dataset for categorial axes. You also have to set the right 
+        ylim for this option to work correct.
     figsize: (float, float), optional
         Width, height in inches.
     rect: array, optional
@@ -184,11 +189,11 @@ def pcp(data,
     check_data(data, labels)
     ytype = check_formatting(ytype, labels)
     ylim = check_formatting(ylim, labels)
+    ylabels = check_formatting(ylabels, labels)
 
     # Setup data
     ytype = set_ytype(ytype, data, colorbar) 
-    ylabels = set_ylabels(data, ytype)
-    yticks = set_yticks(data, ytype, ylabels)
+    ylabels = set_ylabels(ylabels, data, ytype)
     data = replace_str_values(data, ytype, ylabels)
     ylim = set_ylim(ylim, data)
     score = get_score(data, ylim)
@@ -212,7 +217,7 @@ def pcp(data,
                     edgecolor=color, clip_on=False)
             ax0.add_patch(patch)
         else:
-            plt.plot(data[:, i], color=color, alpha=alpha, clip_on=False)
+            ax0.plot(data[:, i], color=color, alpha=alpha, clip_on=False)
 
     # Format x-axis
     ax0.xaxis.tick_top()
@@ -233,9 +238,7 @@ def pcp(data,
         if ytype[i] == "log":
             ax.set_yscale("log")
         if ytype[i] == "categorial":
-            ax.set_yticks(range(yticks[i][0]))
-        if ytype[i] == "linear" and yticks[i]:
-            ax.set_yticks(np.linspace(ylim[i][0], ylim[i][1], yticks[i][0]))
+            ax.set_yticks(range(len(ylabels[i])))
         if ylabels[i]:
             ax.set_yticklabels(ylabels[i])
         
